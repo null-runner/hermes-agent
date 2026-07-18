@@ -11032,6 +11032,13 @@ def _(rid, params: dict) -> dict:
     key, value = params.get("key", ""), params.get("value", "")
     session = _sessions.get(params.get("session_id", ""))
 
+    if key == "desktop.task_list_behavior":
+        nv = str(value or "").strip().lower()
+        if nv not in {"persistent", "current-turn"}:
+            return _err(rid, 4002, f"unknown desktop task list behavior: {value}")
+        _write_config_key("desktop.task_list_behavior", nv)
+        return _ok(rid, {"key": key, "value": nv})
+
     if key == "model":
         try:
             if not value:
@@ -12050,6 +12057,11 @@ def _(rid, params: dict) -> dict:
 @method("config.get")
 def _(rid, params: dict) -> dict:
     key = params.get("key", "")
+    if key == "desktop.task_list_behavior":
+        desktop = _load_cfg().get("desktop")
+        raw = desktop.get("task_list_behavior", "persistent") if isinstance(desktop, dict) else "persistent"
+        value = str(raw or "").strip().lower()
+        return _ok(rid, {"value": value if value in {"persistent", "current-turn"} else "persistent"})
     if key == "provider":
         try:
             from hermes_cli.models import list_available_providers, normalize_provider

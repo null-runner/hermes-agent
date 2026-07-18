@@ -2,14 +2,17 @@ import { useSyncExternalStore } from 'react'
 
 import { $statusItemsBySession } from '@/store/composer-status'
 import { $previewStatusBySession } from '@/store/preview-status'
+import { $todoPanelOpenBySession } from '@/store/todos'
 
 const subscribe = (onChange: () => void) => {
   const offItems = $statusItemsBySession.listen(onChange)
   const offPreviews = $previewStatusBySession.listen(onChange)
+  const offTodoPanels = $todoPanelOpenBySession.listen(onChange)
 
   return () => {
     offItems()
     offPreviews()
+    offTodoPanels()
   }
 }
 
@@ -29,8 +32,9 @@ export function useSessionStatusPresence(sessionId: string | null): boolean {
     }
 
     return (
-      ($statusItemsBySession.get()[sessionId]?.length ?? 0) > 0 ||
-      ($previewStatusBySession.get()[sessionId]?.length ?? 0) > 0
+      ($statusItemsBySession.get()[sessionId] ?? []).some(
+        item => item.type !== 'todo' || Boolean($todoPanelOpenBySession.get()[sessionId])
+      ) || ($previewStatusBySession.get()[sessionId]?.length ?? 0) > 0
     )
   })
 }

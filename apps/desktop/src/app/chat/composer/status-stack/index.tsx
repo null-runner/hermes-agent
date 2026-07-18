@@ -22,7 +22,10 @@ import {
 } from '@/store/composer-status'
 import { $previewStatusBySession, dismissPreviewArtifact } from '@/store/preview-status'
 import { $threadScrolledUp } from '@/store/thread-scroll'
+import { $todoPanelOpenBySession } from '@/store/todos'
 import { openSessionInNewWindow } from '@/store/windows'
+
+import { todoPanelId } from '../todo-button'
 
 import { PreviewStatusRow } from './preview-row'
 import { StatusItemRow } from './status-row'
@@ -69,12 +72,14 @@ export function ComposerStatusStack({ queue, sessionId }: ComposerStatusStackPro
   const navigate = useNavigate()
   const itemsBySession = useStore($statusItemsBySession)
   const previewsBySession = useStore($previewStatusBySession)
+  const todoPanelOpenBySession = useStore($todoPanelOpenBySession)
   const scrolledUp = useStore($threadScrolledUp)
 
-  const groups = useMemo(
-    () => groupStatusItems(sessionId ? (itemsBySession[sessionId] ?? []) : []),
-    [itemsBySession, sessionId]
-  )
+  const groups = useMemo(() => {
+    const grouped = groupStatusItems(sessionId ? (itemsBySession[sessionId] ?? []) : [])
+
+    return grouped.filter(group => group.type !== 'todo' || Boolean(sessionId && todoPanelOpenBySession[sessionId]))
+  }, [itemsBySession, sessionId, todoPanelOpenBySession])
 
   const previews = sessionId ? (previewsBySession[sessionId] ?? []) : []
 
@@ -145,6 +150,7 @@ export function ComposerStatusStack({ queue, sessionId }: ComposerStatusStackPro
           }
           defaultCollapsed={group.type !== 'todo'}
           icon={<Codicon className="text-muted-foreground/70" name={GROUP_ICON[group.type]} size="0.8rem" />}
+          id={group.type === 'todo' && sessionId ? todoPanelId(sessionId) : undefined}
           label={groupLabel(group, t.statusStack)}
         >
           {group.items.map(item => (

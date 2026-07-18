@@ -56,7 +56,13 @@ import {
   setMessages
 } from '@/store/session'
 import { focusOpenSession } from '@/store/session-states'
-import { clearSessionTodos, setSessionTodos, todosForHydration } from '@/store/todos'
+import {
+  clearSessionTodos,
+  setSessionTodos,
+  syncTodoBehaviorForProfile,
+  todoBehaviorForProfile,
+  todosForHydration
+} from '@/store/todos'
 import { isSecondaryWindow } from '@/store/windows'
 import { useSkinCommand } from '@/themes/use-skin-command'
 
@@ -138,6 +144,7 @@ export function ContribWiring({ children }: { children: ReactNode }) {
   const selectedStoredSessionId = useStore($selectedStoredSessionId)
   const messagingSessions = useStore($messagingSessions)
   const profileScope = useStore($profileScope)
+  const activeGatewayProfile = useStore($activeGatewayProfile)
 
   const routedSessionId = routeSessionId(location.pathname)
   const routedSessionIdRef = useRef(routedSessionId)
@@ -198,6 +205,10 @@ export function ContribWiring({ children }: { children: ReactNode }) {
   })
 
   const { connectionRef, gatewayRef, requestGateway } = useGatewayRequest()
+
+  useEffect(() => {
+    void syncTodoBehaviorForProfile(requestGateway, activeGatewayProfile).catch(() => undefined)
+  }, [activeGatewayProfile, gatewayState, requestGateway])
 
   const {
     loadMoreMessagingForPlatform,
@@ -277,7 +288,10 @@ export function ContribWiring({ children }: { children: ReactNode }) {
             storedSessionId
           )
 
-          const restored = todosForHydration(latestSessionTodos(messages))
+          const restored = todosForHydration(
+            latestSessionTodos(messages),
+            todoBehaviorForProfile(storedProfile || activeGatewayProfile)
+          )
 
           if (restored) {
             setSessionTodos(runtimeSessionId, restored)
@@ -295,7 +309,7 @@ export function ContribWiring({ children }: { children: ReactNode }) {
         }
       }
     },
-    [activeSessionIdRef, selectedStoredSessionIdRef, updateSessionState]
+    [activeGatewayProfile, activeSessionIdRef, selectedStoredSessionIdRef, updateSessionState]
   )
 
   // Refresh the open messaging transcript (inbound platform turns arrive via
@@ -423,7 +437,6 @@ export function ContribWiring({ children }: { children: ReactNode }) {
   // Swapping the live gateway to another profile must re-pull that profile's
   // global model + active-profile pill (both are nanostores — the blanket
   // invalidateQueries on swap doesn't touch them).
-  const activeGatewayProfile = useStore($activeGatewayProfile)
   const lastGatewayProfileRef = useRef(activeGatewayProfile)
 
   useEffect(() => {

@@ -56,7 +56,7 @@ import {
   type TileDock
 } from '@/store/session-states'
 import { broadcastSessionsChanged } from '@/store/session-sync'
-import { clearSessionTodos, setSessionTodos, todosForHydration } from '@/store/todos'
+import { clearSessionTodos, setSessionTodos, todoBehaviorForProfile, todosForHydration } from '@/store/todos'
 import { isWatchWindow } from '@/store/windows'
 import type { SessionCreateResponse, SessionResumeResponse, UsageStats } from '@/types/hermes'
 
@@ -119,8 +119,12 @@ function applyStoredUsage(stored: { input_tokens?: number | null; output_tokens?
   setCurrentUsage(current => ({ ...current, input, output, total: input + output }))
 }
 
-function restoreSessionTodos(runtimeSessionId: string, messages: ClientSessionState['messages']) {
-  const restored = todosForHydration(latestSessionTodos(messages))
+function restoreSessionTodos(
+  runtimeSessionId: string,
+  messages: ClientSessionState['messages'],
+  profile?: string | null
+) {
+  const restored = todosForHydration(latestSessionTodos(messages), todoBehaviorForProfile(profile || 'default'))
 
   if (restored) {
     setSessionTodos(runtimeSessionId, restored)
@@ -554,7 +558,7 @@ export function useSessionActions({
           setActiveSessionId(cachedRuntimeId)
           activeSessionIdRef.current = cachedRuntimeId
           syncSessionStateToView(cachedRuntimeId, cachedViewState)
-          restoreSessionTodos(cachedRuntimeId, cachedViewState.messages)
+          restoreSessionTodos(cachedRuntimeId, cachedViewState.messages, stored?.profile)
           setCurrentCwd(cachedViewState.cwd)
           setCurrentBranch(cachedViewState.branch)
           setSessionStartedAt(Date.now())
@@ -726,7 +730,7 @@ export function useSessionActions({
           }),
           storedSessionId
         )
-        restoreSessionTodos(resumed.session_id, messagesForView)
+        restoreSessionTodos(resumed.session_id, messagesForView, sessionProfile)
       } catch (err) {
         if (!isCurrentResume()) {
           return

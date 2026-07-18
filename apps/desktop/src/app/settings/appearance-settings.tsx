@@ -2,6 +2,7 @@ import { useStore } from '@nanostores/react'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 
+import { useGatewayRequest } from '@/app/gateway/hooks/use-gateway-request'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { Button } from '@/components/ui/button'
 import { SegmentedControl } from '@/components/ui/segmented-control'
@@ -15,6 +16,12 @@ import { cn } from '@/lib/utils'
 import { $backdrop, setBackdrop } from '@/store/backdrop'
 import { $embedAllowed, $embedMode, clearEmbedAllowed, type EmbedMode, setEmbedMode } from '@/store/embed-consent'
 import { $activeGatewayProfile, $profiles, normalizeProfileKey } from '@/store/profile'
+import {
+  $todoBehaviorByProfile,
+  saveTodoBehaviorForProfile,
+  type TodoBehavior,
+  todoBehaviorForProfile
+} from '@/store/todos'
 import { $toolViewMode, setToolViewMode } from '@/store/tool-view'
 import { $translucency, setTranslucency } from '@/store/translucency'
 import { $zoomPercent, setZoomPercent } from '@/store/zoom'
@@ -253,6 +260,9 @@ export function AppearanceSettings() {
   const installs = useStore($marketplaceInstalls)
   const profiles = useStore($profiles)
   const activeProfileKey = normalizeProfileKey(useStore($activeGatewayProfile))
+  useStore($todoBehaviorByProfile)
+  const todoBehavior = todoBehaviorForProfile(activeProfileKey)
+  const { requestGateway } = useGatewayRequest()
   const a = t.settings.appearance
 
   const [query, setQuery] = useState('')
@@ -286,6 +296,11 @@ export function AppearanceSettings() {
     { id: 'product', label: a.product },
     { id: 'technical', label: a.technical }
   ] as const
+
+  const todoBehaviorOptions = [
+    { id: 'persistent', label: a.taskListPersistent },
+    { id: 'current-turn', label: a.taskListCurrentTurn }
+  ] as const satisfies readonly { id: TodoBehavior; label: string }[]
 
   const embedOptions = [
     { id: 'ask', label: a.embedsAsk },
@@ -484,6 +499,21 @@ export function AppearanceSettings() {
             }
             description={a.toolViewDesc}
             title={a.toolViewTitle}
+          />
+
+          <ListRow
+            action={
+              <SegmentedControl
+                onChange={behavior => {
+                  triggerHaptic('selection')
+                  void saveTodoBehaviorForProfile(requestGateway, activeProfileKey, behavior).catch(() => undefined)
+                }}
+                options={todoBehaviorOptions}
+                value={todoBehavior}
+              />
+            }
+            description={a.taskListBehaviorDesc}
+            title={a.taskListBehaviorTitle}
           />
 
           <ListRow

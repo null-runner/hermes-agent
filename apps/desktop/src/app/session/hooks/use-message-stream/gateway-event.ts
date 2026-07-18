@@ -41,6 +41,7 @@ import {
   setYoloActive
 } from '@/store/session'
 import { clearSessionSubagents, pruneDelegateFallbackSubagents, upsertSubagent } from '@/store/subagents'
+import { clearSessionTodos, todoBehaviorForProfile } from '@/store/todos'
 import { recordToolDiff } from '@/store/tool-diffs'
 import { reportInstallMethodWarning } from '@/store/updates'
 import { notifyWorkspaceChanged, toolMayMutateFiles } from '@/store/workspace-events'
@@ -407,6 +408,10 @@ export function useGatewayEventHandler(deps: GatewayEventDeps) {
         clearClarifyRequest(undefined, sessionId)
         setSessionCompacting(sessionId, false)
 
+        if (todoBehaviorForProfile(event.profile || $activeGatewayProfile.get()) === 'current-turn') {
+          clearSessionTodos(sessionId)
+        }
+
         flushQueuedDeltas(sessionId)
 
         playCompletionSound()
@@ -699,6 +704,10 @@ export function useGatewayEventHandler(deps: GatewayEventDeps) {
           clearClarifyRequest(undefined, sessionId)
           setSessionCompacting(sessionId, false)
           compactedTurnRef.current.delete(sessionId)
+
+          if (todoBehaviorForProfile(event.profile || $activeGatewayProfile.get()) === 'current-turn') {
+            clearSessionTodos(sessionId)
+          }
         }
 
         if (isActiveEvent) {

@@ -10,6 +10,7 @@ interface StatusSectionProps {
   defaultCollapsed?: boolean
   /** Optional glyph between the caret and the label (e.g. a `Codicon`). */
   icon?: ReactNode
+  id?: string
   label: ReactNode
 }
 
@@ -19,11 +20,11 @@ interface StatusSectionProps {
  * (queue, subagents, background) reads as one piece. The stack supplies the
  * outer card and the dividers between groups; this owns only its own collapse.
  */
-export function StatusSection({ accessory, children, defaultCollapsed = true, icon, label }: StatusSectionProps) {
+export function StatusSection({ accessory, children, defaultCollapsed = true, icon, id, label }: StatusSectionProps) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed)
 
   return (
-    <div>
+    <div id={id}>
       <div className="flex items-center gap-1 pr-1">
         <button
           className="flex min-w-0 flex-1 items-center gap-1.5 px-2 py-1 text-left text-xs font-normal text-muted-foreground/92 transition-colors hover:text-foreground/90"

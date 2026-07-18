@@ -325,6 +325,10 @@ export interface Translations {
       colorModeDesc: string
       toolViewTitle: string
       toolViewDesc: string
+      taskListBehaviorTitle: string
+      taskListBehaviorDesc: string
+      taskListPersistent: string
+      taskListCurrentTurn: string
       uiScaleTitle: string
       uiScaleDesc: (percent: number) => string
       translucencyTitle: string

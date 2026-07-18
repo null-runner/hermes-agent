@@ -4177,6 +4177,31 @@ def test_config_set_details_mode_pins_all_sections(tmp_path, monkeypatch):
     }
 
 
+def test_desktop_task_list_behavior_round_trips_through_profile_config(tmp_path, monkeypatch):
+    import yaml
+
+    monkeypatch.setattr(server, "_hermes_home", tmp_path)
+
+    default = server.handle_request(
+        {"id": "1", "method": "config.get", "params": {"key": "desktop.task_list_behavior"}}
+    )
+    saved = server.handle_request(
+        {
+            "id": "2",
+            "method": "config.set",
+            "params": {"key": "desktop.task_list_behavior", "value": "current-turn"},
+        }
+    )
+    loaded = server.handle_request(
+        {"id": "3", "method": "config.get", "params": {"key": "desktop.task_list_behavior"}}
+    )
+
+    assert default["result"]["value"] == "persistent"
+    assert saved["result"]["value"] == "current-turn"
+    assert loaded["result"]["value"] == "current-turn"
+    assert yaml.safe_load((tmp_path / "config.yaml").read_text())["desktop"]["task_list_behavior"] == "current-turn"
+
+
 def test_config_set_section_writes_per_section_override(tmp_path, monkeypatch):
     import yaml
 

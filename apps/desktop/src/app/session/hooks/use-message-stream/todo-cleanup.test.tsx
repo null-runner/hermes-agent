@@ -6,7 +6,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ClientSessionState } from '@/app/types'
 import { createClientSessionState } from '@/lib/chat-runtime'
 import type { TodoItem } from '@/lib/todos'
-import { $todosBySession, clearSessionTodos, setSessionTodos } from '@/store/todos'
+import {
+  $todoBehaviorByProfile,
+  $todosBySession,
+  clearSessionTodos,
+  setSessionTodos,
+  setTodoBehaviorForProfile
+} from '@/store/todos'
 import type { RpcEvent } from '@/types/hermes'
 
 import { useMessageStream } from './index'
@@ -54,6 +60,7 @@ const complete = () => act(() => handleEvent!({ payload: { text: 'done' }, sessi
 describe('useMessageStream turn-end todo cleanup', () => {
   beforeEach(() => {
     handleEvent = null
+    $todoBehaviorByProfile.set({})
     clearSessionTodos(SID)
   })
 
@@ -87,6 +94,35 @@ describe('useMessageStream turn-end todo cleanup', () => {
     setSessionTodos(SID, [todo('a', 'in_progress')])
 
     act(() => handleEvent!({ payload: { message: 'boom' }, session_id: SID, type: 'error' }))
+
+    expect($todosBySession.get()[SID]).toEqual([todo('a', 'in_progress')])
+  })
+
+  it('clears the list on completion in current-turn mode', async () => {
+    setTodoBehaviorForProfile('default', 'current-turn')
+    await mountStream()
+    setSessionTodos(SID, [todo('a', 'in_progress')])
+    complete()
+    expect($todosBySession.get()[SID]).toBeUndefined()
+  })
+
+  it('clears the list on error in current-turn mode', async () => {
+    setTodoBehaviorForProfile('default', 'current-turn')
+    await mountStream()
+    setSessionTodos(SID, [todo('a', 'in_progress')])
+    act(() => handleEvent!({ payload: { message: 'boom' }, session_id: SID, type: 'error' }))
+    expect($todosBySession.get()[SID]).toBeUndefined()
+  })
+
+  it('uses the event profile instead of leaking the active profile setting', async () => {
+    setTodoBehaviorForProfile('work', 'current-turn')
+    setTodoBehaviorForProfile('personal', 'persistent')
+    await mountStream()
+    setSessionTodos(SID, [todo('a', 'in_progress')])
+
+    act(() =>
+      handleEvent!({ payload: { text: 'done' }, profile: 'personal', session_id: SID, type: 'message.complete' })
+    )
 
     expect($todosBySession.get()[SID]).toEqual([todo('a', 'in_progress')])
   })

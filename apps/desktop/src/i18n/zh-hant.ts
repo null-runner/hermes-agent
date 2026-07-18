@@ -286,6 +286,10 @@ export const zhHant = defineLocale({
       colorModeDesc: '選擇固定模式，或讓 Hermes 跟隨系統設定。',
       toolViewTitle: '工具呼叫顯示',
       toolViewDesc: '產品模式會隱藏原始工具 payload；技術模式會顯示完整輸入/輸出。',
+      taskListBehaviorTitle: '任務清單行為',
+      taskListBehaviorDesc: '在回合之間保留進行中的任務，或在目前回合結束時清除。',
+      taskListPersistent: '跨回合保留',
+      taskListCurrentTurn: '僅目前回合',
       uiScaleTitle: '介面縮放',
       uiScaleDesc: (percent: number) =>
         `縮放整個應用程式的文字與介面。也可使用 Cmd/Ctrl 加 +、- 或 0 調整。目前：${percent}%`,

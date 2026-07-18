@@ -294,6 +294,10 @@ export const ja = defineLocale({
       colorModeDesc: '固定モードを選ぶか、Hermes をシステム設定に合わせます。',
       toolViewTitle: 'ツール呼び出しの表示',
       toolViewDesc: 'プロダクト表示は生のツールペイロードを隠し、テクニカル表示は入出力をすべて表示します。',
+      taskListBehaviorTitle: 'タスクリストの動作',
+      taskListBehaviorDesc: '進行中のタスクをターン間で保持するか、現在のターン終了時に消去します。',
+      taskListPersistent: 'ターン間で保持',
+      taskListCurrentTurn: '現在のターンのみ',
       uiScaleTitle: 'UI スケール',
       uiScaleDesc: (percent: number) =>
         `アプリ全体の文字と UI を拡大縮小します。Cmd/Ctrl と +、-、0 でも変更できます。現在: ${percent}%`,

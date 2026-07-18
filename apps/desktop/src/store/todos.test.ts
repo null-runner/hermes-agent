@@ -2,9 +2,33 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { TodoItem } from '@/lib/todos'
 
-import { $todosBySession, clearSessionTodos, setSessionTodos, todosForHydration } from './todos'
+import {
+  $todoBehaviorByProfile,
+  $todoPanelOpenBySession,
+  $todosBySession,
+  clearSessionTodos,
+  saveTodoBehaviorForProfile,
+  setSessionTodos,
+  setTodoBehaviorForProfile,
+  setTodoPanelOpen,
+  syncTodoBehaviorForProfile,
+  todoBehaviorForProfile,
+  todosForHydration
+} from './todos'
 
 const todo = (id: string, status: TodoItem['status']): TodoItem => ({ content: `task ${id}`, id, status })
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason: unknown) => void
+
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+
+  return { promise, reject, resolve }
+}
 
 describe('setSessionTodos finished-list auto-clear', () => {
   beforeEach(() => {
@@ -62,5 +86,91 @@ describe('todosForHydration', () => {
 
   it('returns null when there is nothing stored', () => {
     expect(todosForHydration(null)).toBeNull()
+  })
+
+  it('does not restore stale active work in current-turn mode', () => {
+    expect(todosForHydration([todo('a', 'in_progress')], 'current-turn')).toBeNull()
+  })
+})
+
+describe('todo behavior preference', () => {
+  beforeEach(() => $todoBehaviorByProfile.set({}))
+
+  it('defaults to persistent and keeps profile values isolated', () => {
+    expect(todoBehaviorForProfile('default')).toBe('persistent')
+    setTodoBehaviorForProfile('work', 'current-turn')
+    expect(todoBehaviorForProfile('work')).toBe('current-turn')
+    expect(todoBehaviorForProfile('personal')).toBe('persistent')
+  })
+
+  it('loads the profile-scoped setting from the gateway', async () => {
+    const request = vi.fn(async () => ({ value: 'current-turn' }))
+    await syncTodoBehaviorForProfile(request, 'work')
+    expect(request).toHaveBeenCalledWith('config.get', { key: 'desktop.task_list_behavior' })
+    expect(todoBehaviorForProfile('work')).toBe('current-turn')
+  })
+
+  it('ignores a stale initial read after a newer write succeeds', async () => {
+    const read = deferred<{ value: string }>()
+
+    const request = vi
+      .fn()
+      .mockImplementationOnce(() => read.promise)
+      .mockResolvedValueOnce({ value: 'current-turn' })
+
+    const staleRead = syncTodoBehaviorForProfile(request, 'work')
+    await saveTodoBehaviorForProfile(request, 'work', 'current-turn')
+    read.resolve({ value: 'persistent' })
+    await staleRead
+
+    expect(request).toHaveBeenNthCalledWith(2, 'config.set', {
+      key: 'desktop.task_list_behavior',
+      value: 'current-turn'
+    })
+    expect(todoBehaviorForProfile('work')).toBe('current-turn')
+  })
+
+  it('keeps the compatible default when an older gateway lacks the setting', async () => {
+    const request = vi.fn(async () => {
+      throw new Error('method not found')
+    })
+
+    await expect(syncTodoBehaviorForProfile(request, 'legacy')).rejects.toThrow('method not found')
+    expect(todoBehaviorForProfile('legacy')).toBe('persistent')
+  })
+
+  it('rolls the latest failed write back without letting an older failure win', async () => {
+    await syncTodoBehaviorForProfile(
+      vi.fn(async () => ({ value: 'persistent' })),
+      'work'
+    )
+    const first = deferred<{ value: string }>()
+    const second = deferred<{ value: string }>()
+
+    const request = vi
+      .fn()
+      .mockImplementationOnce(() => first.promise)
+      .mockImplementationOnce(() => second.promise)
+
+    const staleWrite = saveTodoBehaviorForProfile(request, 'work', 'current-turn')
+    const currentWrite = saveTodoBehaviorForProfile(request, 'work', 'persistent')
+
+    first.reject(new Error('old failure'))
+    await expect(staleWrite).rejects.toThrow('old failure')
+    expect(todoBehaviorForProfile('work')).toBe('persistent')
+
+    second.reject(new Error('current failure'))
+    await expect(currentWrite).rejects.toThrow('current failure')
+    expect(todoBehaviorForProfile('work')).toBe('persistent')
+  })
+})
+
+describe('todo panel presentation state', () => {
+  beforeEach(() => $todoPanelOpenBySession.set({}))
+
+  it('is scoped by runtime session', () => {
+    setTodoPanelOpen('s1', true)
+    expect($todoPanelOpenBySession.get()).toEqual({ s1: true })
+    expect($todoPanelOpenBySession.get().s2).toBeUndefined()
   })
 })
